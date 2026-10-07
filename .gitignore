@@ -1,0 +1,7 @@
+venv/
+.venv/
+__pycache__/
+data/
+*.npy
+*.json
+.DS_Store

@@ -1,0 +1,34 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="chardet" />
+          <option value="cycler" />
+          <option value="enum34" />
+          <option value="graphviz" />
+          <option value="kiwisolver" />
+          <option value="pandas" />
+          <option value="pathlib" />
+          <option value="rapidfuzz" />
+          <option value="retrying" />
+          <option value="scikit-learn" />
+          <option value="scipy" />
+          <option value="subprocess32" />
+          <option value="tqdm" />
+          <option value="backports.functools-lru-cache" />
+          <option value="Unidecode" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="N802" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
