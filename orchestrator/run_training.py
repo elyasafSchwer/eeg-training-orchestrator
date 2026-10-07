@@ -9,8 +9,11 @@ against it. Example:
 """
 
 import argparse
+import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -50,10 +53,21 @@ def docker(*args, **kwargs):
     return subprocess.run(["docker", *args], check=True, text=True, **kwargs)
 
 
-def build_images(provider_dir, consumer_dir):
+def visit_db(visits):
+    """The lookup the consumer validates against, derived from the visits we are about to send."""
+    return {visit.visit_id: visit.metadata for visit in visits}
+
+
+def build_images(provider_dir, consumer_dir, visits):
     say("==> building images")
     docker("build", "-t", PROVIDER_IMAGE, str(provider_dir))
-    docker("build", "-t", CONSUMER_IMAGE, str(consumer_dir))
+    with tempfile.TemporaryDirectory() as temporary:
+        # The consumer's Dockerfile copies in a visit_db.json. Rather than trust a checked-in
+        # snapshot of one, build the image from a context holding a freshly generated database.
+        context = Path(temporary) / "consumer"
+        shutil.copytree(consumer_dir, context)
+        (context / "visit_db.json").write_text(json.dumps(visit_db(visits), indent=2))
+        docker("build", "-t", CONSUMER_IMAGE, str(context))
 
 
 def start_provider(ports, visit_ids, data_dir):
@@ -113,6 +127,10 @@ def main():
     except ValueError as error:
         print(error, file=sys.stderr)
         return 2
+    if not args.data_dir.is_dir():
+        print(f"no dataset at {args.data_dir} — it is too large for the repository, so copy "
+              f"it there or point --data-dir at it", file=sys.stderr)
+        return 2
     visits = filters.select_visits(args.data_dir, visit_filters)
 
     criteria = " and ".join(str(f) for f in visit_filters) or "no filter"
@@ -126,8 +144,12 @@ def main():
         return 1
 
     ports = args.ports.split(",")
-    build_images(args.provider_dir, args.consumer_dir)
-    start_provider(ports, [visit.visit_id for visit in visits], args.data_dir)
+    try:
+        build_images(args.provider_dir, args.consumer_dir, visits)
+        start_provider(ports, [visit.visit_id for visit in visits], args.data_dir)
+    except subprocess.CalledProcessError as error:
+        print(f"docker failed: {' '.join(error.cmd)} — see its output above", file=sys.stderr)
+        return 1
     try:
         wait_for_provider()
         stream(["docker", "logs", "-f", PROVIDER_CONTAINER], "provider")

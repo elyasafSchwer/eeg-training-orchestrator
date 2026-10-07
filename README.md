@@ -7,7 +7,7 @@ that streams their EEG data over TCP as random 10-second chunks, and runs the **
 job** (the provided consumer) against it.
 
 ```
-hemispheric_ext/
+eeg-training-orchestrator/
 ├── orchestrator/
 │   ├── run_training.py       # the orchestrator CLI — start here
 │   └── filters.py            # metadata filter expressions -> list of visits
@@ -17,7 +17,7 @@ hemispheric_ext/
 │   └── requirements.txt      # numpy (provider only; the orchestrator is pure stdlib)
 ├── tests/                    # unit tests — no containers, no dataset needed
 ├── consumer/                 # given: the training job it feeds
-└── data/                     # given: <visit_id>.npy + <visit_id>.json
+└── data/                     # the EEG dataset — not in git, see below
 ```
 
 The orchestrator finds its three siblings relative to its own location, so it runs from a
@@ -27,6 +27,11 @@ fresh clone with no setup; `--data-dir`, `--provider-dir` and `--consumer-dir` o
 
 - Docker or compatible runtime (tested with Rancher Desktop / `docker` CLI)
 - Python 3.9+ to run the orchestrator itself — standard library only
+- **The dataset.** The 99 recordings are ~1.9 GB, too large for the repository, so `data/`
+  is git-ignored. Unpack the given dataset into `data/` next to the code, or point
+  `--data-dir` wherever you keep it. It is the single source of truth: every visit, every
+  filter decision and the consumer's `visit_db.json` are derived from it, so nothing else
+  needs to be supplied.
 
 ## Run a training job
 
@@ -151,11 +156,16 @@ failed as it should, so none of them is green by accident.
 
 ## Notes on the given consumer
 
-- It logs `Visit ID <hex> not found in visit_db.json!` for every chunk. The chunks carry
-  the correct 128-bit UUID; the consumer hex-encodes it without dashes
-  (`1077dc01fd89...`) and looks that up in a database keyed with dashes
-  (`1077dc01-fd89-...`), so the lookup can never hit. Harmless, and left alone because
-  the consumer stands in for the deep-learning team's code.
+- **Its `visit_db.json` is generated, not shipped.** The consumer's Dockerfile copies that
+  file in, and the given copy is a hand-maintained duplicate of metadata that already lives
+  in `data/` — nothing keeps the two in sync. So the orchestrator builds the consumer image
+  from a temporary context holding a database it generates from the visits being streamed,
+  and the checked-out copy is ignored. The dataset stays the only source of truth.
+- It logs `Visit ID <hex> not found in visit_db.json!` for every chunk regardless, and this
+  is the consumer's own bug, not a stale database: the chunks carry the correct 128-bit
+  UUID, which the consumer hex-encodes without dashes (`1077dc01fd89...`) before looking it
+  up in a database keyed with dashes (`1077dc01-fd89-...`), so the lookup can never hit.
+  Left alone because the consumer stands in for the deep-learning team's code.
 - It sleeps 100 ms per chunk, which caps a feed at ~10 chunks/s per port. The provider is
   not the bottleneck; add ports to go faster.
 - The dataset ships one `.json` with no matching `.npy` (and one `.npy` with no `.json`),

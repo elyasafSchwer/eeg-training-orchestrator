@@ -1,4 +1,4 @@
-"""Unit tests for the orchestrator's readiness wait, and for the marker it waits on.
+"""Unit tests for the visit database, the orchestrator's readiness wait, and its marker.
 
 The rest of run_training.py is a thin shell around the docker CLI, covered by actually
 running it rather than by mocks.
@@ -13,12 +13,31 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "orchestrator"), str(ROOT / "provider")]
 
+import filters  # noqa: E402
 import provider  # noqa: E402
 import run_training  # noqa: E402
 
 
 def docker_said(stdout):
     return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr="")
+
+
+class VisitDatabase(unittest.TestCase):
+    """What the consumer validates against: derived from the dataset, never checked in."""
+
+    def test_holds_exactly_the_selected_visits_keyed_by_id(self):
+        selected = [
+            filters.Visit("aaa", Path("aaa.npy"), {"visit_id": "aaa", "age": 30}),
+            filters.Visit("bbb", Path("bbb.npy"), {"visit_id": "bbb", "age": 70}),
+        ]
+
+        database = run_training.visit_db(selected)
+
+        self.assertEqual(sorted(database), ["aaa", "bbb"])  # nothing the job will not stream
+        self.assertEqual(database["bbb"], {"visit_id": "bbb", "age": 70})
+
+    def test_is_empty_rather_than_stale_when_nothing_is_selected(self):
+        self.assertEqual(run_training.visit_db([]), {})
 
 
 class ReadyMarker(unittest.TestCase):
