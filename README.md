@@ -37,7 +37,7 @@ fresh clone with no setup; `--data-dir`, `--provider-dir` and `--consumer-dir` o
 
 ```bash
 cd orchestrator
-python3 run_training.py --filter gender=female --filter 'age>20'
+python3 run_training.py --filter gender=female --filter age>20
 ```
 
 That builds both images, starts the provider on ports 5001 and 5002, waits until it is
@@ -80,10 +80,10 @@ been sent (abridged output of a run over the 8 visits with `age>74`):
 
 ```bash
 --filter gender=female            # any field from the visit JSON
---filter 'age>=20' --filter 'age<40'
+--filter age>=20 --filter age<40
 --filter wears_glasses=false      # true/false
 --filter dominant_hand!=right
---filter 'date_of_visit>=2024-06-01'   # ISO dates compare correctly as strings
+--filter date_of_visit>=2024-06-01   # ISO dates compare correctly as strings
 ```
 
 Quote expressions containing `>` or `<` so the shell does not read them as redirection.
@@ -94,7 +94,7 @@ No filter at all selects everything.
 Check a selection before spending GPU time on it:
 
 ```bash
-python3 run_training.py --dry-run --filter 'age>70' --filter gender=female
+python3 run_training.py --dry-run --filter age>70 --filter gender=female
 ```
 
 ## How it works
